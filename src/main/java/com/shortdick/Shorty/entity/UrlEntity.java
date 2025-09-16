@@ -20,7 +20,7 @@ public class UrlEntity {
     @Column(nullable = false, unique = true, length = 2048)
     private String longUrl;
 
-    @Column(nullable = false, unique = true, length = 10)
+    @Column(nullable = true, unique = true, length = 10)
     private String shortCode;
 
     @Column
@@ -29,7 +29,7 @@ public class UrlEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime creationDate;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private LocalDateTime expirationDate;
 
 
