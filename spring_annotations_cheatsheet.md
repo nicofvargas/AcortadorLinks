@@ -552,16 +552,92 @@ public ResponseEntity<ProductoResponseDTO> actualizar(@PathVariable Long id, @Va
 ```
 ---
 
-## Capítulo 6: Patrones Avanzados y Clases Esenciales
+## Capítulo 6: Patrones Avanzados y Clases Esenciales para APIs Robustas
 
-### `ResponseEntity<T>`
+Este capítulo se centra en dos clases fundamentales que elevan la calidad de tu API de "funcional" a "profesional": `ResponseEntity` para un control total sobre las respuestas HTTP, y `Optional` para un manejo seguro de la ausencia de datos.
 
-Clase que representa la respuesta HTTP completa: **código de estado**, **cabeceras** y **cuerpo**.
--   `ResponseEntity.ok(body)` -> **200 OK**
--   `ResponseEntity.created(uri).body(body)` -> **201 Created**
--   `ResponseEntity.noContent().build()` -> **204 No Content** (para `DELETE` exitosos)
--   `ResponseEntity.badRequest().build()` -> **400 Bad Request**
--   `ResponseEntity.notFound().build()` -> **404 Not Found**
+### `ResponseEntity<T>`: Control Total sobre la Respuesta HTTP
+
+`ResponseEntity` es una de las clases más poderosas de Spring MVC. Mientras que devolver un DTO directamente desde un `@RestController` es conveniente para el "camolino feliz" (que siempre resulta en un `200 OK`), `ResponseEntity` te da un control granular sobre cada parte de la respuesta HTTP.
+
+**Componentes de una `ResponseEntity`:**
+1.  **Código de Estado (Status Code):** El número que le dice al cliente el resultado de la operación (`200`, `201`, `404`, etc.).
+2.  **Cabeceras (Headers):** Metadatos sobre la respuesta (ej. `Location`, `Content-Type`, `Cache-Control`).
+3.  **Cuerpo (Body):** Los datos reales que se envían al cliente (tu DTO), que puede estar vacío.
+
+#### Métodos Estáticos (Atajos para Casos Comunes)
+
+Estos son los métodos para las respuestas más estándar. Son rápidos y muy legibles.
+
+-   **`ResponseEntity.ok(body)`**: Crea una respuesta con código **200 OK** y el cuerpo proporcionado. El atajo más común.
+-   **`ResponseEntity.notFound().build()`**: Crea una respuesta con código **404 Not Found** y sin cuerpo. El `.build()` finaliza la construcción.
+-   **`ResponseEntity.badRequest().build()`**: Crea una respuesta con código **400 Bad Request**.
+-   **`ResponseEntity.noContent().build()`**: Crea una respuesta con código **204 No Content**. Ideal para operaciones `DELETE` exitosas.
+-   **`ResponseEntity.created(uri).body(body)`**: Crea una respuesta con código **201 Created**. Es el estándar para un `POST` exitoso.
+    -   **Parámetro `uri`:** Una `java.net.URI` que apunta a la localización del nuevo recurso creado. Esto se coloca en la cabecera `Location`.
+
+#### El Patrón Constructor (Builder Pattern) para Respuestas Personalizadas
+
+Para respuestas más complejas, se utiliza el patrón de construcción fluida. Empiezas con un código de estado y luego encadenas métodos para construir la respuesta.
+
+-   **`ResponseEntity.status(HttpStatus status)`**: El punto de partida. Le pasas un estado HTTP del enum `HttpStatus`.
+-   **`.header(String headerName, String... headerValues)`**: Añade una cabecera HTTP personalizada a la respuesta.
+-   **`.location(URI location)`**: Un atajo específico para añadir la cabecera `Location`.
+-   **`.cacheControl(CacheControl cacheControl)`**: Permite configurar las directivas de caché (ej. `CacheControl.maxAge(10, TimeUnit.MINUTES)`).
+-   **`.body(T body)`**: Añade el cuerpo a la respuesta.
+-   **`.build()`**: Finaliza la construcción de la `ResponseEntity`. Se usa cuando la respuesta **no tiene cuerpo**.
+
+#### Ejemplos de Casos de Uso
+
+**1. Redirección (`GET /{shortCode}`):**
+Necesitamos un estado `302` y una cabecera `Location`. No hay cuerpo.
+
+```java
+String longUrl = "https://www.google.com";
+return ResponseEntity
+        .status(HttpStatus.FOUND) // 1. Empezar con el estado 302
+        .location(URI.create(longUrl)) // 2. Añadir la cabecera Location
+        .build(); // 3. Finalizar, ya que no hay cuerpo
+```
+
+**2. Creación de un Recurso (`POST /api/productos`):**
+El método estático `.created()` es un atajo para esto, pero por debajo hace lo siguiente:
+
+```java
+ProductoResponseDTO nuevoProductoDto = ...;
+URI location = URI.create("/api/productos/" + nuevoProductoDto.getId());
+
+return ResponseEntity
+        .status(HttpStatus.CREATED) // 1. Empezar con el estado 201
+        .location(location) // 2. Añadir la cabecera Location
+        .body(nuevoProductoDto); // 3. Añadir el cuerpo y finalizar
+```
+
+**3. Respuesta con Cabeceras Personalizadas:**
+Devolver el número total de productos en una cabecera en una petición `GET /api/productos`.
+
+```java
+List<ProductoResponseDTO> productos = ...;
+long totalProductos = productoRepository.count();
+
+return ResponseEntity
+        .ok() // 1. Empezar con el atajo para 200 OK
+        .header("X-Total-Count", String.valueOf(totalProductos)) // 2. Añadir la cabecera personalizada
+        .body(productos); // 3. Añadir el cuerpo y finalizar
+```
+
+**4. Control de Caché del Navegador:**
+Indicarle al navegador del cliente que puede cachear esta respuesta durante 10 minutos.
+
+```java
+// GET /api/categorias (las categorías no cambian a menudo)
+List<CategoriaDTO> categorias = ...;
+
+return ResponseEntity
+        .ok()
+        .cacheControl(CacheControl.maxAge(10, TimeUnit.MINUTES)) // 1. Configurar la caché
+        .body(categorias);
+```
 
 ### `Optional<T>`: El Arte de Manejar la Ausencia
 
@@ -582,13 +658,15 @@ Clase que representa la respuesta HTTP completa: **código de estado**, **cabece
 -   **`T orElseGet(Supplier<T> other)`**: Similar a `orElse`, pero la creación del valor por defecto (la lambda) solo se ejecuta si es necesario.
 -   **`T orElseThrow(Supplier<? extends X> exceptionSupplier)`**: Devuelve el valor si está presente; si no, lanza la excepción proporcionada. **Es la mejor práctica en la capa de servicio.**
 
-### El Patrón Definitivo (Revisitado con más detalle)
+### El Patrón Definitivo: Combinando `Optional` y `ResponseEntity`
 
-El patrón funcional combina `map` y `orElse` para crear un flujo de datos declarativo y seguro en el controlador.
+Este es el patrón a seguir para operaciones que pueden o no encontrar un recurso (ej. `GET /recursos/{id}`). Combina la seguridad de `Optional` con el control de `ResponseEntity` de una manera funcional y concisa.
+
+**Objetivo:** Traducir el resultado de una operación de servicio (`Optional<T>`) en una respuesta HTTP precisa (`200 OK` si se encuentra, `404 Not Found` si no).
 
 ```java
-@GetMapping("/{id}")
-public ResponseEntity<ProductoDTO> obtenerPorId(@PathVariable Long id) {
+@GetMapping("/productos/{id}")
+public ResponseEntity<ProductoDTO> obtenerProductoPorId(@PathVariable Long id) {
     // 1. El servicio devuelve un Optional<ProductoDTO>
     return productoService.obtenerDtoPorId(id)
            

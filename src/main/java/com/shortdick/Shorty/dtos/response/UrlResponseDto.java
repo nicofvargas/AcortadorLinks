@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class UrlResponseDto {
     private String shortUrl;
     private String longUrl;
+    private String shortCode;
     private LocalDateTime creationDate;
     private LocalDateTime expirationDate;
 }

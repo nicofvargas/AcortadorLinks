@@ -26,6 +26,7 @@ public class UrlMapper {
 
         urlResponseDto.setShortUrl(dominio + entity.getShortCode());
         urlResponseDto.setLongUrl(entity.getLongUrl());
+        urlResponseDto.setShortCode(entity.getShortCode());
         urlResponseDto.setCreationDate(entity.getCreationDate());
         urlResponseDto.setExpirationDate(entity.getExpirationDate());
 
