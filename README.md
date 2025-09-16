@@ -108,7 +108,6 @@ Este proyecto fue diseñado siguiendo principios de software limpio para maximiz
     *   La generación de códigos está en una **Clase de Utilidad** (`Base62Converter`).
 *   **Bajo Acoplamiento:** Se programa contra **interfaces** en la inyección de dependencias.
 *   **DTO Pattern:** Se utilizan Data Transfer Objects para desacoplar la API de la capa de persistencia, mejorando la seguridad y la flexibilidad.
-*   **Manejo de Errores Centralizado:** Un `@ControllerAdvice` global se encarga de traducir las excepciones a respuestas JSON consistentes.
 
 ## 🔮 Futuras Mejoras
 
